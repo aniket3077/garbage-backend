@@ -1582,7 +1582,7 @@
 
       let targetUrl = '/predict';
       if (window.location.hostname.includes('pages.dev')) {
-        targetUrl = 'https://garbage-backend-hq2k3sj6ra-ew.a.run.app/predict';
+        targetUrl = 'https://garbage-backend-16956925980.europe-west1.run.app/predict';
       }
 
       const startTime = performance.now();
@@ -1593,7 +1593,7 @@
       } catch (err) {
         console.warn('Direct predict failed, trying Cloud Run fallback:', err);
         try {
-          response = await fetch('https://garbage-backend-hq2k3sj6ra-ew.a.run.app/predict', { method: 'POST', body: formData });
+          response = await fetch('https://garbage-backend-16956925980.europe-west1.run.app/predict', { method: 'POST', body: formData });
         } catch (e) {
           alert('Upload failed: Unable to connect to AI classification server. Please check internet connection.');
           return;

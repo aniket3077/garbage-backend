@@ -52,7 +52,7 @@ const char *WIFI_PASSWORD = "12345678";
 // Cloud Backend Configuration
 // ==========================================
 
-const char *SERVER_HOST = "garbage-backend-hq2k3sj6ra-ew.a.run.app";
+const char *SERVER_HOST = "garbage-backend-16956925980.europe-west1.run.app";
 const int SERVER_PORT = 443;
 const char *SERVER_PATH = "/predict";
 
@@ -408,7 +408,7 @@ void detectAndSendToServer() {
   // Priority 1: Google Cloud Run AI Backend (HTTPS Live Production)
   // ==========================================
   Serial.println("[*] Connecting to Google Cloud Run: "
-                 "https://garbage-backend-hq2k3sj6ra-ew.a.run.app/predict ...");
+                 "https://garbage-backend-16956925980.europe-west1.run.app/predict ...");
 
   WiFiClientSecure secureClient;
   secureClient.setInsecure(); // Skip root certificate verification for speed
