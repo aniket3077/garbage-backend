@@ -213,12 +213,6 @@ void setup() {
   Serial.print("[+] ESP32 IP: ");
   Serial.println(WiFi.localIP());
 
-  // Configure Google Public DNS for reliable Firebase access
-  IPAddress dns1(8, 8, 8, 8);
-  IPAddress dns2(1, 1, 1, 1);
-  WiFi.config(WiFi.localIP(), WiFi.gatewayIP(), WiFi.subnetMask(), dns1, dns2);
-  Serial.printf("[+] Public DNS Configured: %s, %s\n", WiFi.dnsIP(0).toString().c_str(), WiFi.dnsIP(1).toString().c_str());
-
   // --------------------------------------------------------------------------
   // 6. Startup Buzzer
   // --------------------------------------------------------------------------
@@ -488,10 +482,11 @@ void sendHeartbeat() {
   }
 
   WiFiClientSecure client;
+
   client.setInsecure();
-  client.setTimeout(4);
 
   HTTPClient http;
+
   String heartbeatUrl =
       String(FIREBASE_DB_HOST) +
       "/hardware_heartbeats/esp32_devkit.json";
@@ -500,7 +495,6 @@ void sendHeartbeat() {
     client,
     heartbeatUrl
   );
-  http.setTimeout(3500);
 
   http.addHeader(
     "Content-Type",
@@ -508,21 +502,32 @@ void sendHeartbeat() {
   );
 
   String payload =
-      "{\"device\":\"esp32_devkit\",\"ip\":\"" +
-      WiFi.localIP().toString() +
-      "\",\"status\":\"ONLINE\",\"rssi\":" +
-      String(WiFi.RSSI()) +
-      ",\"timestamp\":{\".sv\":\"timestamp\"}}";
+      "{\"device\":\"esp32_devkit\",";
 
-  int httpCode = http.PUT(payload);
+  payload +=
+      "\"ip\":\"" +
+      WiFi.localIP().toString() +
+      "\",";
+
+  payload +=
+      "\"status\":\"ONLINE\",";
+
+  payload +=
+      "\"timestamp\":{\".sv\":\"timestamp\"}}";
+
+  int httpCode =
+      http.sendRequest(
+        "PUT",
+        (uint8_t *)payload.c_str(),
+        payload.length()
+      );
 
   if (httpCode > 0) {
+
     Serial.printf(
       "[+] Heartbeat Updated | IP: %s\n",
       WiFi.localIP().toString().c_str()
     );
-  } else {
-    Serial.printf("[!] Heartbeat failed: %d (%s)\n", httpCode, http.errorToString(httpCode).c_str());
   }
 
   http.end();
@@ -539,48 +544,72 @@ void pollLatestPrediction() {
   }
 
   WiFiClientSecure client;
+
   client.setInsecure();
-  client.setTimeout(4);
 
   HTTPClient http;
+
   String pollUrl =
       String(FIREBASE_DB_HOST) +
-      "/predictions.json?orderBy=%22$key%22&limitToLast=1";
+      "/predictions.json?orderBy=\"$key\"&limitToLast=1";
 
   http.begin(
     client,
     pollUrl
   );
-  http.setTimeout(3500);
 
-  int httpCode = http.GET();
+  int httpCode =
+      http.GET();
 
   if (httpCode == 200) {
 
-    String response = http.getString();
+    String response =
+        http.getString();
 
     StaticJsonDocument<1024> doc;
-    DeserializationError error = deserializeJson(doc, response);
 
-    if (!error && doc.is<JsonObject>()) {
+    DeserializationError error =
+        deserializeJson(
+          doc,
+          response
+        );
 
-      JsonObject obj = doc.as<JsonObject>();
+    if (
+      !error &&
+      doc.is<JsonObject>()
+    ) {
 
-      for (JsonPair kv : obj) {
+      JsonObject obj =
+          doc.as<JsonObject>();
 
-        String currentKey = kv.key().c_str();
-        JsonObject item = kv.value().as<JsonObject>();
+      for (
+        JsonPair kv : obj
+      ) {
+
+        String currentKey =
+            kv.key().c_str();
+
+        JsonObject item =
+            kv.value().as<JsonObject>();
 
         // New prediction
-        if (currentKey != lastProcessedKey && !lastProcessedKey.equals("")) {
+        if (
+          currentKey != lastProcessedKey &&
+          !lastProcessedKey.equals("")
+        ) {
 
-          lastProcessedKey = currentKey;
+          lastProcessedKey =
+              currentKey;
 
-          const char *category = item["class"] | "Dry";
-          int servoAngle = item["servo_angle"] | 0;
+          const char *category =
+              item["class"] | "Dry";
+
+          int servoAngle =
+              item["servo_angle"] | 0;
 
           Serial.printf(
-            "\n[!] New Classification Received: %s (Servo: %d°)\n",
+            "\n[!] New Classification: %s "
+            "(Servo: %d°)\n",
             category,
             servoAngle
           );
@@ -590,15 +619,15 @@ void pollLatestPrediction() {
             servoAngle
           );
 
-        } else if (lastProcessedKey.equals("")) {
+        } else if (
+          lastProcessedKey.equals("")
+        ) {
 
-          lastProcessedKey = currentKey;
-          Serial.printf("[+] Syncing latest Firebase key: %s (Listening for new classifications...)\n", lastProcessedKey.c_str());
+          lastProcessedKey =
+              currentKey;
         }
       }
     }
-  } else if (httpCode > 0 && httpCode != 200) {
-    Serial.printf("[Firebase] Poll error (HTTP %d)\n", httpCode);
   }
 
   http.end();
@@ -739,7 +768,23 @@ void actuateSorting(
   bool isWet =
       wasteClass.equalsIgnoreCase("Wet");
 
-  int targetAngle = isWet ? SERVO_WET_ACTIVATE : SERVO_DRY_ACTIVATE;
+  int targetAngle;
+
+  if (
+    angle == 0 ||
+    angle == 180
+  ) {
+
+    targetAngle =
+        angle;
+
+  } else {
+
+    targetAngle =
+        isWet
+        ? SERVO_WET_ACTIVATE
+        : SERVO_DRY_ACTIVATE;
+  }
 
   playBuzzer(200);
 
